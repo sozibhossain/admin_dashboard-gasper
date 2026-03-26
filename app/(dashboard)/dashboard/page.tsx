@@ -12,7 +12,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { EmptyState } from "@/components/shared/empty-state";
-import { SectionHeader } from "@/components/shared/section-header";
 
 const summaryCards = [
   {
@@ -47,7 +46,7 @@ const summaryCards = [
   },
   {
     key: "totalCommission",
-    title: "Total Commission",
+    title: "Total Comission",
     icon: Wallet,
     iconClass: "bg-[#cae8cd] text-[#327f3e]",
   },
@@ -60,6 +59,16 @@ const radialStats = [
   { title: "Commissions", subtitle: "All Time", border: "border-[#1aa03a]", key: "ordersProcessing" },
 ] as const;
 
+function DetailsButton({ href }: { href: string }) {
+  return (
+    <Link href={href}>
+      <Button variant="secondary" className="h-5 rounded-[2px] px-2 text-[10px] font-semibold text-[#1f73e8]">
+        <Eye className="mr-1 h-2.5 w-2.5" /> Details
+      </Button>
+    </Link>
+  );
+}
+
 export default function DashboardPage() {
   const { data, isLoading } = useQuery({
     queryKey: ["dashboard-stats"],
@@ -70,29 +79,32 @@ export default function DashboardPage() {
   const orders = useMemo(() => data?.data.orders ?? [], [data]);
   const products = useMemo(() => data?.data.products ?? [], [data]);
 
-  const uniqueCustomerEmails = useMemo(() => {
-    const set = new Set<string>();
-    orders.forEach((order) => {
-      if (order.customer?.email) set.add(order.customer.email);
-    });
-    return Array.from(set);
+  const recentCustomerRows = useMemo(() => {
+    return orders
+      .filter((order) => order.customer?.email)
+      .map((order) => ({
+        email: order.customer?.email || "-",
+        orderDate: order.createdAt,
+        orderId: order.orderId,
+      }))
+      .slice(0, 5);
   }, [orders]);
 
   if (isLoading) {
     return (
-      <div className="space-y-6">
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      <div className="space-y-3">
+        <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
           {Array.from({ length: 6 }).map((_, index) => (
-            <Skeleton key={index} className="h-36" />
+            <Skeleton key={index} className="h-28" />
           ))}
         </div>
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
           {Array.from({ length: 4 }).map((_, index) => (
-            <Skeleton key={index} className="h-52" />
+            <Skeleton key={index} className="h-44" />
           ))}
         </div>
-        <Skeleton className="h-72" />
-        <Skeleton className="h-72" />
+        <Skeleton className="h-56" />
+        <Skeleton className="h-60" />
       </div>
     );
   }
@@ -102,25 +114,23 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <SectionHeader title="Dashboard" />
-
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+    <div className="space-y-3">
+      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
         {summaryCards.map((card) => {
           const Icon = card.icon;
           const value = stats[card.key];
           return (
-            <Card key={card.key}>
-              <CardContent className="flex items-start justify-between gap-3 p-4">
+            <Card key={card.key} className="rounded-none">
+              <CardContent className="flex min-h-[102px] items-start justify-between gap-2 p-3">
                 <div>
-                  <p className="text-[28px] font-semibold leading-[150%] text-[#0c0c0c]">{card.title}</p>
-                  <p className="text-[16px] font-normal leading-[150%] text-[#6e7782]">Today</p>
-                  <p className="mt-2 text-[28px] font-semibold leading-[150%] text-[#153c72]">
+                  <p className="text-[16px] font-semibold leading-[150%] text-[#0c0c0c]">{card.title}</p>
+                  <p className="text-[12px] font-normal leading-[150%] text-[#6e7782]">Today</p>
+                  <p className="mt-1 text-[24px] font-semibold leading-[100%] text-[#153c72]">
                     {card.key === "totalCommission" ? formatCurrency(Number(value)) : value}
                   </p>
                 </div>
-                <span className={`flex h-16 w-16 items-center justify-center rounded-full ${card.iconClass}`}>
-                  <Icon className="h-8 w-8" />
+                <span className={`flex h-12 w-12 items-center justify-center rounded-full ${card.iconClass}`}>
+                  <Icon className="h-6 w-6" />
                 </span>
               </CardContent>
             </Card>
@@ -128,23 +138,23 @@ export default function DashboardPage() {
         })}
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
         {radialStats.map((item) => (
-          <Card key={item.title}>
-            <CardContent className="flex flex-col items-center justify-center gap-3 py-6">
-              <div className={`flex h-36 w-36 items-center justify-center rounded-full border-[10px] ${item.border}`}>
-                <span className="text-[28px] font-semibold leading-[150%] text-[#1d1d1d]">{stats[item.key]}</span>
+          <Card key={item.title} className="rounded-none">
+            <CardContent className="flex min-h-[176px] flex-col items-center justify-center gap-2 p-3">
+              <div className={`flex h-[112px] w-[112px] items-center justify-center rounded-full border-[9px] ${item.border}`}>
+                <span className="text-[24px] font-normal leading-[100%] text-[#1d1d1d]">{stats[item.key]}</span>
               </div>
-              <p className="text-[28px] font-semibold leading-[150%] text-[#1d1d1d]">{item.title}</p>
-              <p className="text-[16px] text-[#6d7681]">{item.subtitle}</p>
+              <p className="text-[16px] font-semibold leading-[150%] text-[#1d1d1d]">{item.title}</p>
+              <p className="text-[12px] leading-[150%] text-[#6d7681]">{item.subtitle}</p>
             </CardContent>
           </Card>
         ))}
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-2">
-        <Card>
-          <CardHeader>
+      <div className="grid gap-2 xl:grid-cols-2">
+        <Card className="rounded-none">
+          <CardHeader className="p-3">
             <CardTitle>Recent Orders</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
@@ -152,22 +162,18 @@ export default function DashboardPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Order Number</TableHead>
-                  <TableHead>Order Date</TableHead>
-                  <TableHead className="text-right">Action</TableHead>
+                  <TableHead className="w-[88px] text-center"> </TableHead>
+                  <TableHead className="text-right">Order Date</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {orders.slice(0, 5).map((order) => (
                   <TableRow key={order._id}>
-                    <TableCell>{order.orderId}</TableCell>
-                    <TableCell>{formatDate(order.createdAt)}</TableCell>
-                    <TableCell className="text-right">
-                      <Link href={`/orders?orderId=${order.orderId}`}>
-                        <Button size="sm" variant="secondary">
-                          <Eye className="mr-1 h-3 w-3" /> Details
-                        </Button>
-                      </Link>
+                    <TableCell className="text-[13px]">{order.orderId || "t54gpf468y28hf"}</TableCell>
+                    <TableCell className="text-center">
+                      <DetailsButton href={`/orders?orderId=${order.orderId}`} />
                     </TableCell>
+                    <TableCell className="text-right text-[13px]">{formatDate(order.createdAt)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -175,8 +181,8 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
+        <Card className="rounded-none">
+          <CardHeader className="p-3">
             <CardTitle>Recent Customers</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
@@ -184,14 +190,18 @@ export default function DashboardPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Customers Email</TableHead>
+                  <TableHead className="w-[88px] text-center"> </TableHead>
                   <TableHead className="text-right">Order Date</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {uniqueCustomerEmails.slice(0, 5).map((email, index) => (
-                  <TableRow key={email}>
-                    <TableCell>{email}</TableCell>
-                    <TableCell className="text-right">{formatDate(orders[index]?.createdAt)}</TableCell>
+                {recentCustomerRows.map((row) => (
+                  <TableRow key={`${row.email}-${row.orderId}`}>
+                    <TableCell className="text-[13px]">{row.email}</TableCell>
+                    <TableCell className="text-center">
+                      <DetailsButton href={`/orders?orderId=${row.orderId}`} />
+                    </TableCell>
+                    <TableCell className="text-right text-[13px]">{formatDate(row.orderDate)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -200,8 +210,8 @@ export default function DashboardPage() {
         </Card>
       </div>
 
-      <Card>
-        <CardHeader>
+      <Card className="rounded-none">
+        <CardHeader className="p-3">
           <CardTitle>Recent Products</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
@@ -213,34 +223,27 @@ export default function DashboardPage() {
                 <TableHead>Category</TableHead>
                 <TableHead>Type</TableHead>
                 <TableHead>Price</TableHead>
-                <TableHead className="text-right">Action</TableHead>
+                <TableHead className="text-right"> </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {products.slice(0, 5).map((product) => (
                 <TableRow key={product._id}>
                   <TableCell>
-                    <div className="relative h-14 w-20 overflow-hidden rounded-sm bg-[#eef2f8]">
+                    <div className="relative h-10 w-14 overflow-hidden rounded-[2px] bg-[#eef2f8]">
                       {product.photos?.[0]?.url ? (
-                        <Image
-                          src={product.photos[0].url}
-                          alt={product.title}
-                          fill
-                          className="object-cover"
-                        />
+                        <Image src={product.photos[0].url} alt={product.title} fill className="object-cover" />
                       ) : null}
                     </div>
                   </TableCell>
-                  <TableCell>{product.title}</TableCell>
-                  <TableCell>{product.category?.name || "Electronic"}</TableCell>
-                  <TableCell>Physical</TableCell>
-                  <TableCell>{formatCurrency(product.price)}</TableCell>
+                  <TableCell className="max-w-[260px] truncate text-[12px] uppercase text-[#9ba1ac]">
+                    {product.title}
+                  </TableCell>
+                  <TableCell className="text-[12px] text-[#9ba1ac]">{product.category?.name || "Electronic"}</TableCell>
+                  <TableCell className="text-[12px] text-[#9ba1ac]">Physical</TableCell>
+                  <TableCell className="text-[12px] text-[#9ba1ac]">{formatCurrency(product.price)}</TableCell>
                   <TableCell className="text-right">
-                    <Link href="/products">
-                      <Button variant="secondary" size="sm">
-                        <Eye className="mr-1 h-3 w-3" /> Details
-                      </Button>
-                    </Link>
+                    <DetailsButton href="/products" />
                   </TableCell>
                 </TableRow>
               ))}

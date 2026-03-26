@@ -13,6 +13,7 @@ import type {
   PaginationMeta,
   Product,
   ProductsResponse,
+  UserProfile,
   Vendor,
 } from "@/types/api";
 
@@ -76,8 +77,26 @@ export async function resetPassword(payload: {
   return response.data;
 }
 
-export async function changePassword(payload: { oldPassword: string; newPassword: string }) {
-  const response = await apiClient.post<ApiResponse<string>>(`/auth/change-password`, payload);
+export async function getProfile() {
+  const response = await apiClient.get<ApiResponse<UserProfile>>(`/user/profile`);
+  return response.data;
+}
+
+export async function updateProfile(payload: FormData) {
+  const response = await apiClient.put<ApiResponse<UserProfile>>(`/user/profile`, payload, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+  });
+  return response.data;
+}
+
+export async function changePassword(payload: {
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword: string;
+}) {
+  const response = await apiClient.put<ApiResponse<null>>(`/user/password`, payload);
   return response.data;
 }
 

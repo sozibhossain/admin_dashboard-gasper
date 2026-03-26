@@ -24,6 +24,23 @@ export type AuthLoginResponse = {
   _id: string;
 };
 
+export type UserProfile = {
+  _id: string;
+  name?: string;
+  firstName?: string;
+  lastName?: string;
+  username?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  nationality?: string;
+  role?: AuthUser["role"];
+  avatar?: {
+    public_id?: string;
+    url?: string;
+  };
+};
+
 export type Product = {
   _id: string;
   title: string;

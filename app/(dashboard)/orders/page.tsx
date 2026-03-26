@@ -8,6 +8,7 @@ import { SectionHeader } from "@/components/shared/section-header";
 import { TableSkeleton } from "@/components/shared/table-skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Pagination } from "@/components/ui/pagination";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -35,13 +36,14 @@ export default function OrdersPage() {
   const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
   const [filter, setFilter] = useState<keyof typeof filterMap>("all");
+  const [selectedDate, setSelectedDate] = useState("all");
 
   const { data, isLoading } = useQuery({
-    queryKey: ["orders", page, filter],
+    queryKey: ["orders", filter],
     queryFn: () =>
       getOrders({
-        page,
-        limit: PAGINATION_LIMIT,
+        page: 1,
+        limit: 200,
         status: filterMap[filter],
       }),
   });
@@ -55,24 +57,83 @@ export default function OrdersPage() {
     onError: (error) => toast.error(toErrorMessage(error)),
   });
 
-  const orders = data?.data || [];
-  const hasNextPage = orders.length === PAGINATION_LIMIT;
-  const totalPages = Math.max(page + (hasNextPage ? 1 : 0), 1);
+  const orders = useMemo(() => data?.data ?? [], [data]);
+
+  const datesWithCount = useMemo(() => {
+    const counts = new Map<string, number>();
+
+    orders.forEach((order) => {
+      const date = formatDate(order.createdAt);
+      if (date === "-") return;
+      counts.set(date, (counts.get(date) || 0) + 1);
+    });
+
+    return Array.from(counts.entries())
+      .map(([date, count]) => ({ date, count }))
+      .sort((a, b) => b.date.localeCompare(a.date));
+  }, [orders]);
+
+  const filteredOrders = useMemo(() => {
+    if (selectedDate === "all") return orders;
+    return orders.filter((order) => formatDate(order.createdAt) === selectedDate);
+  }, [orders, selectedDate]);
+
+  const totalPages = Math.max(Math.ceil(filteredOrders.length / PAGINATION_LIMIT), 1);
+  const currentPage = Math.min(page, totalPages);
+
+  const paginatedOrders = useMemo(() => {
+    const start = (currentPage - 1) * PAGINATION_LIMIT;
+    return filteredOrders.slice(start, start + PAGINATION_LIMIT);
+  }, [filteredOrders, currentPage]);
 
   const titleCount = useMemo(() => {
-    if (filter === "all") return "";
-    return ` (${orders.length} ${filter} found)`;
-  }, [filter, orders.length]);
+    if (filter !== "all") return ` (${filteredOrders.length} ${filter} found)`;
+    if (selectedDate !== "all") return ` (${filteredOrders.length} found)`;
+    return "";
+  }, [filter, filteredOrders.length, selectedDate]);
+
+  const dateButtonLabel = selectedDate === "all" ? "All Order Dates" : selectedDate;
+  const showingFrom = filteredOrders.length === 0 ? 0 : (currentPage - 1) * PAGINATION_LIMIT + 1;
+  const showingTo = filteredOrders.length === 0 ? 0 : Math.min(currentPage * PAGINATION_LIMIT, filteredOrders.length);
 
   return (
     <div className="space-y-6">
       <SectionHeader
         title={`Order${titleCount}`}
-        description={`${orders.length} orders found`}
+        description={`${filteredOrders.length} orders found`}
         action={
-          <Button className="h-12 rounded-sm px-4 text-[16px]">
-            <CalendarDays className="mr-2 h-4 w-4" /> 12 July, 2025 <ChevronDown className="ml-2 h-4 w-4" />
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button className="h-12 rounded-sm px-4 text-[16px]">
+                <CalendarDays className="mr-2 h-4 w-4" /> {dateButtonLabel} <ChevronDown className="ml-2 h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-[240px]">
+              <DropdownMenuItem
+                onClick={() => {
+                  setSelectedDate("all");
+                  setPage(1);
+                }}
+              >
+                All Order Dates ({orders.length})
+              </DropdownMenuItem>
+              {datesWithCount.length > 0 ? (
+                datesWithCount.map((item) => (
+                  <DropdownMenuItem
+                    key={item.date}
+                    onClick={() => {
+                      setSelectedDate(item.date);
+                      setPage(1);
+                    }}
+                  >
+                    {item.date} ({item.count})
+                  </DropdownMenuItem>
+                ))
+              ) : (
+                <DropdownMenuItem disabled>No order dates</DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         }
       />
 
@@ -80,6 +141,7 @@ export default function OrdersPage() {
         value={filter}
         onValueChange={(value) => {
           setFilter(value as keyof typeof filterMap);
+          setSelectedDate("all");
           setPage(1);
         }}
       >
@@ -108,9 +170,9 @@ export default function OrdersPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {orders.map((order) => (
+              {paginatedOrders.map((order) => (
                 <TableRow key={order._id}>
-                  <TableCell className="font-semibold text-[#3f4651]">#{order.orderId}</TableCell>
+                  <TableCell className="font-semibold text-[#3f4651]">#{order.orderId.slice(0, 4)}</TableCell>
                   <TableCell>{order.items?.[0]?.product?.title || "Product Name Here"}</TableCell>
                   <TableCell>{order.customer?.name || "Customer Name"}</TableCell>
                   <TableCell>{formatDate(order.createdAt)}</TableCell>
@@ -141,12 +203,11 @@ export default function OrdersPage() {
           </Table>
 
           <div className="flex flex-col gap-4 pt-4 md:flex-row md:items-center md:justify-between">
-            <p className="text-[16px] text-[#6d7681]">Showing {(page - 1) * PAGINATION_LIMIT + 1} to {Math.min(page * PAGINATION_LIMIT, (page - 1) * PAGINATION_LIMIT + orders.length)} entries</p>
-            <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
+            <p className="text-[16px] text-[#6d7681]">Showing {showingFrom} to {showingTo} entries</p>
+            <Pagination page={currentPage} totalPages={totalPages} onPageChange={setPage} />
           </div>
         </>
       )}
     </div>
   );
 }
-
